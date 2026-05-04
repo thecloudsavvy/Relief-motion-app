@@ -18,13 +18,25 @@ export async function logProgress(formData: FormData) {
   // Current date (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0]
 
+  // Check if already checked in today
+  const { data: existing } = await supabase
+    .from('progress_logs')
+    .select('id')
+    .eq('patient_id', user.id)
+    .eq('date', today)
+    .maybeSingle()
+
+  if (existing) {
+    return redirect('/patient/dashboard?message=You have already checked in today!')
+  }
+
   const { error } = await supabase
     .from('progress_logs')
     .insert({
       patient_id: user.id,
       date: today,
       completed,
-      pain_level
+      pain_level: painLevel
     })
 
   if (error) {

@@ -2,17 +2,26 @@ import { createClient } from '@/utils/supabase/server'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button, buttonVariants } from '@/components/ui/button'
 import Link from 'next/link'
-import { PlusCircle, Search, PlayCircle } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { PlusCircle, PlayCircle } from 'lucide-react'
 import { VideoDialog } from '@/components/video-dialog'
+import { SearchInput } from '@/components/search-input'
 
-export default async function PhysioExercisesPage() {
+export default async function PhysioExercisesPage(props: { searchParams: Promise<{ q?: string }> }) {
   const supabase = await createClient()
+  const searchParams = await props.searchParams;
+  const query = searchParams?.q?.toLowerCase() || ''
 
-  const { data: exercises } = await supabase
+  let { data: exercises } = await supabase
     .from('exercises')
     .select('*')
     .order('created_at', { ascending: false })
+
+  if (query && exercises) {
+    exercises = exercises.filter(e => 
+      e.name.toLowerCase().includes(query) || 
+      e.id.toLowerCase().includes(query)
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -27,27 +36,20 @@ export default async function PhysioExercisesPage() {
         </Link>
       </div>
 
-      <div className="flex items-center space-x-2 bg-white p-2 rounded-md shadow-sm border border-slate-200 w-full max-w-md">
-        <Search className="text-slate-400 ml-2" size={20} />
-        <Input 
-          type="text" 
-          placeholder="Search exercises..." 
-          className="border-0 shadow-none focus-visible:ring-0 px-2"
-        />
-      </div>
+      <SearchInput placeholder="Search exercises by name or ID..." />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {exercises && exercises.length > 0 ? (
           exercises.map((exercise: any) => (
             <Card key={exercise.id} className="hover:shadow-md transition-shadow flex flex-col overflow-hidden">
               {/* Video Thumbnail */}
-              <div className="aspect-video bg-slate-100 relative group cursor-pointer overflow-hidden">
+              <div className="aspect-video bg-slate-100 relative group overflow-hidden">
                 <VideoDialog
                   videoUrl={exercise.video_url}
                   title={exercise.name}
                   description={exercise.description}
                   trigger={
-                    <div className="w-full h-full flex items-center justify-center relative">
+                    <button type="button" className="w-full h-full flex items-center justify-center relative appearance-none border-none p-0 bg-transparent cursor-pointer">
                       <video
                         src={exercise.video_url}
                         preload="metadata"
@@ -58,7 +60,7 @@ export default async function PhysioExercisesPage() {
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors flex items-center justify-center">
                         <PlayCircle size={48} className="text-white drop-shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all" />
                       </div>
-                    </div>
+                    </button>
                   }
                 />
               </div>

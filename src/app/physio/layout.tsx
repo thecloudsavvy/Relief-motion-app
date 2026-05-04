@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import Link from 'next/link'
-import { Activity, Users, Calendar, ClipboardList, LogOut } from 'lucide-react'
+import { Activity, Users, ClipboardList, LogOut } from 'lucide-react'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -40,10 +40,6 @@ export default async function PhysioLayout({ children }: { children: ReactNode }
           <Link href="/physio/patients" className="flex items-center gap-3 px-3 py-2 text-slate-700 rounded-md hover:bg-slate-100 font-medium">
             <Users size={20} />
             Patients
-          </Link>
-          <Link href="/physio/sessions" className="flex items-center gap-3 px-3 py-2 text-slate-700 rounded-md hover:bg-slate-100 font-medium">
-            <Calendar size={20} />
-            Sessions
           </Link>
           <Link href="/physio/exercises" className="flex items-center gap-3 px-3 py-2 text-slate-700 rounded-md hover:bg-slate-100 font-medium">
             <ClipboardList size={20} />

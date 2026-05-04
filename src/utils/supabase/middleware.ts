@@ -37,8 +37,8 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
 
-  // Protect /physio, /patient, and / routes
-  if (!user && (path.startsWith('/physio') || path.startsWith('/patient') || path === '/')) {
+  // Protect /physio and /patient routes (landing page is public)
+  if (!user && (path.startsWith('/physio') || path.startsWith('/patient'))) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
     url.pathname = '/login'

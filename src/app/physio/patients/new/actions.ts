@@ -2,34 +2,38 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { createClient } from '@/utils/supabase/server'
 import { createServerClient } from '@supabase/ssr'
 
 export async function createPatient(formData: FormData) {
-  // We need the service role key to bypass RLS and create a user in auth.users
-  // If not available, we use the regular client, but creating users is restricted by default.
-  
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // 1. Cookie-based client to get the logged-in physio's ID
+  const cookieClient = await createClient()
+  const { data: { user: physio } } = await cookieClient.auth.getUser()
 
-  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+  if (!physio) {
+    return redirect('/login')
+  }
+
+  // 2. Admin client (service-role) for creating users — bypasses RLS
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+
+  const adminClient = createServerClient(supabaseUrl, serviceRoleKey, {
     cookies: {
       getAll: () => [],
       setAll: () => {},
     }
   })
 
-  // We also need the current physio ID
-  const { data: { user } } = await supabase.auth.getUser()
-
   const fullName = formData.get('full_name') as string
   const phone = formData.get('phone') as string
   const email = formData.get('email') as string
-  const password = formData.get('password') as string || 'default123!' // Default password for MVP
+  const password = formData.get('password') as string || 'default123!'
   const condition = formData.get('condition') as string
   const notes = formData.get('notes') as string
 
-  // 1. Create auth user (this will trigger profile creation)
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  // 3. Create auth user via admin client (triggers profile creation)
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
     email: email,
     password: password,
     email_confirm: true,
@@ -45,21 +49,18 @@ export async function createPatient(formData: FormData) {
     return redirect('/physio/patients/new?error=Failed to create patient account')
   }
 
-  // 2. Wait a moment for the trigger to create the profile, or handle it manually if we don't have the trigger setup correctly yet.
-  // Assuming the trigger works, the profile exists. We just create the patient record.
-  
-  const { error: patientError } = await supabase
+  // 4. Create the patient record with the CORRECT physio ID
+  const { error: patientError } = await adminClient
     .from('patients')
     .insert({
       id: authData.user.id,
       condition,
       notes,
-      assigned_physio_id: user?.id
+      assigned_physio_id: physio.id  // Now correctly set from the cookie-based client
     })
 
   if (patientError) {
     console.error("Error creating patient record:", patientError)
-    // Could not create patient record, but auth user was created.
     return redirect('/physio/patients/new?error=Failed to create patient details')
   }
 

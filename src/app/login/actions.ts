@@ -33,7 +33,7 @@ export async function signup(formData: FormData) {
       data: {
         full_name: formData.get('full_name') as string,
         phone: formData.get('phone') as string,
-        role: 'patient', // default to patient
+        role: 'physio', // Web signups are for practitioners
       }
     }
   }
